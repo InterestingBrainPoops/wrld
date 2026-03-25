@@ -1,0 +1,25 @@
+[project]
+name = "wrld"
+version = "0.1.0"
+description = "Toy VAE world model for a spring-mass-damper system"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.4",
+    "matplotlib>=3.8",
+    "numpy>=1.24",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wrld"]
