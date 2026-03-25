@@ -1,4 +1,5 @@
 """Train the world model, save checkpoints and plots."""
+import os
 import sys
 import torch
 from pathlib import Path
@@ -21,13 +22,44 @@ CHECKPOINT_DIR = ROOT / "outputs" / "checkpoints"
 PLOT_DIR = ROOT / "outputs" / "plots"
 
 
+def resolve_device() -> torch.device:
+    requested = os.environ.get("WRLD_DEVICE", "auto").lower()
+
+    if requested == "auto":
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")
+
+    if requested == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError("WRLD_DEVICE=cuda was requested, but CUDA is not available.")
+        return torch.device("cuda")
+
+    if requested == "mps":
+        if not hasattr(torch.backends, "mps") or not torch.backends.mps.is_built():
+            raise RuntimeError("WRLD_DEVICE=mps was requested, but this PyTorch build does not include MPS support.")
+        if not torch.backends.mps.is_available():
+            raise RuntimeError("WRLD_DEVICE=mps was requested, but MPS is not available on this machine.")
+        return torch.device("mps")
+
+    if requested == "cpu":
+        return torch.device("cpu")
+
+    raise RuntimeError(
+        f"Unsupported WRLD_DEVICE={requested!r}. Expected one of: auto, cuda, mps, cpu."
+    )
+
+
 def main():
     torch.manual_seed(42)
-    if torch.cuda.is_available():
+    device = resolve_device()
+
+    if device.type == "cuda":
         torch.cuda.manual_seed_all(42)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    print(f"Using device: {device} (WRLD_DEVICE={os.environ.get('WRLD_DEVICE', 'auto')})")
 
     # Generate data if not present
     train_path = DATA_DIR / "train.pt"
@@ -44,8 +76,19 @@ def main():
         train_data = load_data(train_path)
         val_data = load_data(val_path)
 
-    train_loader = make_dataloader(train_data, batch_size=128, shuffle=True)
-    val_loader = make_dataloader(val_data, batch_size=128, shuffle=False)
+    use_pinned_memory = device.type == "cuda"
+    train_loader = make_dataloader(
+        train_data,
+        batch_size=128,
+        shuffle=True,
+        pin_memory=use_pinned_memory,
+    )
+    val_loader = make_dataloader(
+        val_data,
+        batch_size=128,
+        shuffle=False,
+        pin_memory=use_pinned_memory,
+    )
 
     # Build model
     model = WorldModel()
@@ -68,6 +111,13 @@ def main():
         device=device,
         checkpoint_dir=CHECKPOINT_DIR,
         checkpoint_every=20,
+    )
+    print(
+        "Training benchmarks | "
+        f"total={history['total_train_seconds']:.2f}s "
+        f"avg/epoch={history['avg_epoch_seconds']:.2f}s "
+        f"fastest={min(history['epoch_seconds']):.2f}s "
+        f"slowest={max(history['epoch_seconds']):.2f}s"
     )
 
     # Save final model
