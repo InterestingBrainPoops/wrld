@@ -1,4 +1,6 @@
 """Training loop and loss computation for the world model."""
+from time import perf_counter
+
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
@@ -28,6 +30,19 @@ def compute_losses(
     return total, recon_loss, dynamics_loss, kl_loss
 
 
+def _synchronize_device(device: torch.device) -> None:
+    if device.type == "cuda" and torch.cuda.is_available():
+        torch.cuda.synchronize()
+    elif (
+        device.type == "mps"
+        and hasattr(torch, "mps")
+        and hasattr(torch.mps, "synchronize")
+        and hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available()
+    ):
+        torch.mps.synchronize()
+
+
 def train(
     model: WorldModel,
     train_loader,
@@ -51,9 +66,15 @@ def train(
     history = {
         "train_total": [], "train_recon": [], "train_dynamics": [], "train_kl": [],
         "val_total": [], "val_recon": [], "val_dynamics": [], "val_kl": [],
+        "epoch_seconds": [],
     }
+    _synchronize_device(device)
+    training_start = perf_counter()
 
     for epoch in range(num_epochs):
+        _synchronize_device(device)
+        epoch_start = perf_counter()
+
         # KL warmup: linearly increase from 0 to kl_weight
         current_kl_weight = kl_weight * min(1.0, epoch / max(kl_warmup_epochs, 1))
 
@@ -105,6 +126,10 @@ def train(
         for k in val_sums:
             history[f"val_{k}"].append(val_sums[k] / n_val)
 
+        _synchronize_device(device)
+        epoch_seconds = perf_counter() - epoch_start
+        history["epoch_seconds"].append(epoch_seconds)
+
         if (epoch + 1) % 10 == 0:
             print(
                 f"Epoch {epoch+1:3d}/{num_epochs} | "
@@ -112,12 +137,18 @@ def train(
                 f"recon={history['train_recon'][-1]:.4f} "
                 f"dyn={history['train_dynamics'][-1]:.4f} "
                 f"kl={history['train_kl'][-1]:.4f} | "
-                f"val total={history['val_total'][-1]:.4f}"
+                f"val total={history['val_total'][-1]:.4f} | "
+                f"epoch time={epoch_seconds:.2f}s"
             )
 
         if checkpoint_dir is not None and (epoch + 1) % checkpoint_every == 0:
             from pathlib import Path
             ckpt_path = Path(checkpoint_dir) / f"epoch_{epoch+1:04d}.pt"
             torch.save(model.state_dict(), ckpt_path)
+
+    _synchronize_device(device)
+    total_train_seconds = perf_counter() - training_start
+    history["total_train_seconds"] = total_train_seconds
+    history["avg_epoch_seconds"] = total_train_seconds / max(num_epochs, 1)
 
     return history

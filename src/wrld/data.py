@@ -111,12 +111,17 @@ class SequenceDataset(Dataset):
         return self.observations[idx], self.actions[idx]
 
 
-def make_dataloader(data: dict, batch_size: int = 128, shuffle: bool = True) -> DataLoader:
+def make_dataloader(
+    data: dict,
+    batch_size: int = 128,
+    shuffle: bool = True,
+    pin_memory: bool = False,
+) -> DataLoader:
     dataset = SequenceDataset(data["observations"], data["actions"])
     return DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        pin_memory=True,
+        pin_memory=pin_memory,
         num_workers=0,
     )

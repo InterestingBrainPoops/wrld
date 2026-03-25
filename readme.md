@@ -3,11 +3,22 @@ I wanted to see if i could simulate a spring mass damper using a simple world mo
 
 ## to run
 1. you will need `uv`, found [here](https://docs.astral.sh/uv/getting-started/installation/)
-2. this repo setup assumes you have cuda 12.6 installed, if not it will fallback to cpu.  you can always modify the settings in `pyproject.toml` to your current cuda version.
+2. on linux / windows, `uv` will install the CUDA 12.6 pytorch wheel from the pytorch index. on macos, it will install the standard pytorch wheel from pypi instead.
 3. `uv sync`
 4. `uv run scripts/train.py`
 
 it'll generate all the worst case loss and reconstruction curves, along with the loss curves.
+
+### device selection
+default: `uv run scripts/train.py`
+
+optional override: `WRLD_DEVICE=auto|cuda|mps|cpu`
+
+examples:
+
+- `uv run scripts/train.py`
+- `WRLD_DEVICE=mps uv run scripts/train.py`
+- `WRLD_DEVICE=cpu uv run scripts/train.py`
 
 ## plots
 ### architecture
