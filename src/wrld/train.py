@@ -43,10 +43,25 @@ def _synchronize_device(device: torch.device) -> None:
         torch.mps.synchronize()
 
 
+def _rollout_mse(model: WorldModel, val_obs: torch.Tensor, val_actions: torch.Tensor) -> torch.Tensor:
+    """Returns per-sequence rollout MSE over the full val set. Shape: (N,)"""
+    N, T, _ = val_obs.shape
+    with torch.no_grad():
+        mu_0, _ = model.encoder(val_obs[:, 0, :])
+        z = mu_0
+        preds = [model.decoder(z)]
+        for t in range(T - 1):
+            z = model.dynamics(z, val_actions[:, t, :])
+            preds.append(model.decoder(z))
+        predicted = torch.stack(preds, dim=1)  # (N, T, 2)
+        return ((predicted - val_obs) ** 2).mean(dim=(1, 2))  # (N,)
+
+
 def train(
     model: WorldModel,
     train_loader,
     val_loader,
+    val_data: dict = None,
     num_epochs: int = 200,
     lr: float = 1e-3,
     kl_weight: float = 0.001,
@@ -54,6 +69,7 @@ def train(
     device: torch.device = None,
     checkpoint_dir=None,
     checkpoint_every: int = 20,
+    rollout_every: int = 10,
 ) -> dict:
     """Full training loop. Returns loss history dict."""
     if device is None:
@@ -63,10 +79,18 @@ def train(
     optimizer = Adam(model.parameters(), lr=lr)
     scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs)
 
+    # Pre-move val tensors to device once if provided
+    val_obs = val_actions = None
+    if val_data is not None:
+        val_obs = val_data["observations"].to(device)
+        val_actions = val_data["actions"].to(device)
+
     history = {
         "train_total": [], "train_recon": [], "train_dynamics": [], "train_kl": [],
         "val_total": [], "val_recon": [], "val_dynamics": [], "val_kl": [],
         "epoch_seconds": [],
+        "rollout_epochs": [], "rollout_mean": [], "rollout_std": [],
+        "rollout_min": [], "rollout_max": [],
     }
     _synchronize_device(device)
     training_start = perf_counter()
@@ -130,7 +154,22 @@ def train(
         epoch_seconds = perf_counter() - epoch_start
         history["epoch_seconds"].append(epoch_seconds)
 
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % rollout_every == 0:
+            rollout_str = ""
+            if val_obs is not None:
+                model.eval()
+                mse = _rollout_mse(model, val_obs, val_actions)
+                r_mean, r_std = mse.mean().item(), mse.std().item()
+                r_min, r_max = mse.min().item(), mse.max().item()
+                history["rollout_epochs"].append(epoch + 1)
+                history["rollout_mean"].append(r_mean)
+                history["rollout_std"].append(r_std)
+                history["rollout_min"].append(r_min)
+                history["rollout_max"].append(r_max)
+                rollout_str = (
+                    f" | rollout mse mean={r_mean:.4f} "
+                    f"std={r_std:.4f} min={r_min:.4f} max={r_max:.4f}"
+                )
             print(
                 f"Epoch {epoch+1:3d}/{num_epochs} | "
                 f"train total={history['train_total'][-1]:.4f} "
@@ -139,6 +178,7 @@ def train(
                 f"kl={history['train_kl'][-1]:.4f} | "
                 f"val total={history['val_total'][-1]:.4f} | "
                 f"epoch time={epoch_seconds:.2f}s"
+                + rollout_str
             )
 
         if checkpoint_dir is not None and (epoch + 1) % checkpoint_every == 0:

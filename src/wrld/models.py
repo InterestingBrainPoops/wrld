@@ -8,7 +8,7 @@ Dimensions:
 import torch
 import torch.nn as nn
 
-LATENT_DIM = 30
+LATENT_DIM = 2
 OBS_DIM = 2
 ACTION_DIM = 1
 
@@ -41,13 +41,13 @@ class DynamicsModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(LATENT_DIM + ACTION_DIM, 128),
+            nn.Linear(LATENT_DIM + ACTION_DIM, 64),
             nn.ReLU(),
-            nn.Linear(128, 128),
+            nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, LATENT_DIM),
+            # nn.Linear(32, 32),
+            # nn.ReLU(),
+            nn.Linear(64, LATENT_DIM),
         )
 
     def forward(self, z: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
