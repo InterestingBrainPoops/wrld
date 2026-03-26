@@ -43,5 +43,9 @@ not much to see here, the reconstruction was nailing it
 ![](./figs/rollout.png)
 performance seems to degrade as you hit timestep 30 in worst cases, and model seems to do poorly for transient loading / huge changes in acceleration, as seen with seq 46 and 153. might just be issues of out of domain data, but we shall see
 
+### latent PCA
+![](./figs/latent_pca.png)
+indicates how well the latent representation holds for the space, if its sporadic / not a smooth curve from red to blue, then something fucked up
+
 
 if you have any reccomendations or notice any big errors, please feel free to open a PR :)
