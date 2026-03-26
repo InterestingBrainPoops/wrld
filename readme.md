@@ -26,6 +26,8 @@ so heres a quick overview of the system architecture, i know its a little bit of
 ![](./figs/architecture.png)
 
 it boils down to an encoder -> latent dynamics model -> deccoder, but if theoretically your rollouts can live in the latent space as you add your action vector directly to the latent vector, thus removing the lossy encoder + decoder step.
+ok slight changes here, this no longer uses 2x 128 layers in the dynamics model, it uses 1 64 layer. and the latent representation is now 2, not 30. cuts max rollout MSE from .0752 -> 0.0095 
+
 
 ### loss
 ![](./figs/loss_curves.png)
