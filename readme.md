@@ -35,6 +35,7 @@ with that + the SSM4 at 200 epochs, performance is crazy, matches reconstruction
 
 part of the issue is because the encoder is non-linear, a lot of work is spent trying to "decode" the linear state of the original SMD. interesting point. 
 
+yeah ok tried changing it to be a pass through for the state, got worse. arguably a regression for the MSE, but reduced training time is worth
 
 
 ### loss
