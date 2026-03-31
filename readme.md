@@ -29,9 +29,13 @@ it boils down to an encoder -> latent dynamics model -> deccoder, but if theoret
 
 ok slight changes here, this no longer uses 2x 128 layers in the dynamics model, it uses 1 64 layer. and the latent representation is now 2, not 30. cuts max rollout MSE from .0752 -> 0.0095 
 
-update: increased epochs from 200 -> 1000, and modified dynamics model to be an SSM4( i think ) style model. 
+update: added rollout based training, and modified dynamics model to be an SSM4( i think ) style model. 
 
-at 1000 epochs, performance is crazy, matches reconstruction almost perfectly, and a mean rollout loss of 0.0002, and max of 0.0014. which is almost imperceptable in the worst cases.
+with that + the SSM4 at 200 epochs, performance is crazy, matches reconstruction almost perfectly, and a mean rollout loss of 0.0024, and max of 0.0224, which is siginificantly better when viewed than the previous worst cases.
+
+part of the issue is because the encoder is non-linear, a lot of work is spent trying to "decode" the linear state of the original SMD. interesting point. 
+
+
 
 ### loss
 ![](./figs/loss_curves.png)
@@ -53,7 +57,6 @@ performance is absolute peak now
 ![](./figs/latent_pca.png)
 indicates how well the latent representation holds for the space, if its sporadic / not a smooth curve from red to blue, then something fucked up
 
-no longer smooth, but still good. might be overfitting slightly?
-
+no longer smooth, but still good.
 
 if you have any reccomendations or notice any big errors, please feel free to open a PR :)

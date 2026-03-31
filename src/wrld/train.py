@@ -20,7 +20,7 @@ def compute_losses(
 
     recon_loss = F.mse_loss(out["obs_recon"], out["obs_target"])
 
-    dynamics_loss = F.mse_loss(out["z_next_pred"], out["z_next_target"])
+    dynamics_loss = F.mse_loss(out["rollout_preds"], out["rollout_targets"])
 
     kl_loss = -0.5 * torch.mean(
         1 + out["log_var"] - out["mu"].pow(2) - out["log_var"].exp()
