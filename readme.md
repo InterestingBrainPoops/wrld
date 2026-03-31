@@ -26,8 +26,12 @@ so heres a quick overview of the system architecture, i know its a little bit of
 ![](./figs/architecture.png)
 
 it boils down to an encoder -> latent dynamics model -> deccoder, but if theoretically your rollouts can live in the latent space as you add your action vector directly to the latent vector, thus removing the lossy encoder + decoder step.
+
 ok slight changes here, this no longer uses 2x 128 layers in the dynamics model, it uses 1 64 layer. and the latent representation is now 2, not 30. cuts max rollout MSE from .0752 -> 0.0095 
 
+update: increased epochs from 200 -> 1000, and modified dynamics model to be an SSM4( i think ) style model. 
+
+at 1000 epochs, performance is crazy, matches reconstruction almost perfectly, and a mean rollout loss of 0.0002, and max of 0.0014. which is almost imperceptable in the worst cases.
 
 ### loss
 ![](./figs/loss_curves.png)
@@ -43,11 +47,13 @@ not much to see here, the reconstruction was nailing it
 
 ### worst case rollouts
 ![](./figs/rollout.png)
-performance seems to degrade as you hit timestep 30 in worst cases, and model seems to do poorly for transient loading / huge changes in acceleration, as seen with seq 46 and 153. might just be issues of out of domain data, but we shall see
+performance is absolute peak now
 
 ### latent PCA
 ![](./figs/latent_pca.png)
 indicates how well the latent representation holds for the space, if its sporadic / not a smooth curve from red to blue, then something fucked up
+
+no longer smooth, but still good. might be overfitting slightly?
 
 
 if you have any reccomendations or notice any big errors, please feel free to open a PR :)

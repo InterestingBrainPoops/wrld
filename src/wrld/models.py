@@ -49,9 +49,15 @@ class DynamicsModel(nn.Module):
             # nn.ReLU(),
             nn.Linear(64, LATENT_DIM),
         )
+        self.A = nn.Linear(LATENT_DIM, LATENT_DIM)
+        self.B = nn.Linear(ACTION_DIM, LATENT_DIM)
 
     def forward(self, z: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         inp = torch.cat([z, action], dim=-1)
+        # A matrix
+        out = self.A(z)
+        # B matrix
+        out += self.B(action)
         return z + self.net(inp)  # residual: predict delta
 
 

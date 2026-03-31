@@ -105,7 +105,7 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         val_data=val_data,
-        num_epochs=200,
+        num_epochs=1000,
         lr=1e-3,
         kl_weight=0.001,
         kl_warmup_epochs=40,
